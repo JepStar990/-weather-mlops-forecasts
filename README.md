@@ -1,4 +1,3 @@
-```md
 # Weather MLOps: Multi-API Forecast Verification + Ensemble (Zero Budget)
 
 An end‑to‑end, production‑grade (free‑tier) MLOps system to ingest hourly weather forecasts from multiple providers, ingest observed weather, measure forecast error per source/horizon/variable, train and promote our own ensemble model, and serve predictions via FastAPI with a Gradio verification dashboard.
@@ -15,43 +14,6 @@ All pipelines run on **free tiers**:
 ---
 
 ## Overview
-
-```
-
-        +---------------------------+
-        |  GitHub Actions (cron)    |
-        +-----------+---------------+
-                    |
-
-:17  ingest forecasts (multiple APIs)
-v
-+--------+--------+
-\| Neon Postgres   |
-\|  (forecasts)    |
-+--------+--------+
-|
-:47  ingest obs (Meteostat) + compute errors
-v
-+--------+--------+
-\| Neon Postgres   |
-\| (observations,  |
-\|   errors)       |
-+--------+--------+
-/        
-daily 03:17   /        \  :27 predict with champion
-train+promote /          \  write our\_model to forecasts
-v            v
-+-----+----+   +---+------+
-\| DagsHub  |   | FastAPI  |
-\|  MLflow  |   | (Deta)   |
-+----------+   +---+------+
-|
-+-----+------+
-\|  Gradio    |
-\| (HF Spaces)|
-+------------+
-
-````
 
 ---
 
