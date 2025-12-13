@@ -1,0 +1,21 @@
+name: Predict Hourly
+on:
+  schedule:
+    - cron: "27 * * * *"   # hourly at :27 UTC
+  workflow_dispatch: {}
+jobs:
+  predict:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -r requirements.txt
+      - run: python -m src.jobs.job_predict_hourly
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DAGSHUB_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
+          DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+          PUBLIC_REPO_NAME: ${{ vars.PUBLIC_REPO_NAME }}
+          TARGET_LOCATIONS: ${{ vars.TARGET_LOCATIONS }}
+          VARIABLES: ${{ vars.VARIABLES }}

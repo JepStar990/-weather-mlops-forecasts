@@ -1,0 +1,25 @@
+name: Verification - Observations & Errors
+on:
+  schedule:
+    - cron: "47 * * * *"   # hourly at :47 UTC (staggered ~30m after ETL)
+  workflow_dispatch: {}
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -r requirements.txt
+      - run: psql "$DATABASE_URL" -f src/db/schema.sql
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      - name: Ingest Observations
+        run: python -m src.jobs.job_ingest_observations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          TARGET_LOCATIONS: ${{ vars.TARGET_LOCATIONS }}
+          VARIABLES: ${{ vars.VARIABLES }}
+      - name: Compute Errors
+        run: python -m src.jobs.job_verify_errors
+        env:

@@ -1,0 +1,17 @@
+requests
+pandas
+numpy
+python-dateutil
+SQLAlchemy
+psycopg2-binary
+meteostat
+mlflow
+scikit-learn
+lightgbm
+catboost
+gradio
+fastapi
+uvicorn
+pydantic
+python-dotenv
+matplotlib

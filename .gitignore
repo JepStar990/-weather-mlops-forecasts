@@ -1,0 +1,21 @@
+# Python
+____pycache__/
+*.pyc
+.venv/
+.env
+.env.local
+
+# Data/cache
+.cache/
+.tmp/
+*.sqlite
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# MLflow runs (local)
+

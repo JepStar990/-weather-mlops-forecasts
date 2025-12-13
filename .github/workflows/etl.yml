@@ -1,0 +1,25 @@
+name: ETL - Forecast Ingestion
+on:
+  schedule:
+    - cron: "17 * * * *"   # hourly at :17 UTC
+  workflow_dispatch: {}
+jobs:
+  etl:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -r requirements.txt
+      - run: psql "$DATABASE_URL" -f src/db/schema.sql
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      - run: python -m src.jobs.job_ingest_forecasts
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
+          VISUAL_CROSSING_API_KEY: ${{ secrets.VISUAL_CROSSING_API_KEY }}
+          MET_NO_USER_AGENT: ${{ secrets.MET_NO_USER_AGENT }}
+                   NWS_USER_AGENT: ${{ secrets.NWS_USER_AGENT }}
+          TARGET_LOCATIONS: ${{ vars.TARGET_LOCATIONS }}
+          VARIABLES: ${{ vars.VARIABLES }}
