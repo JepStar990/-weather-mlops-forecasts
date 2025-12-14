@@ -19,3 +19,4 @@ def floor_hour(dt: datetime) -> datetime:
 
 def horizon_hours(issue_time: datetime, valid_time: datetime) -> int:
     delta = to_utc(valid_time) - to_utc(issue_time)
+    return int(round(delta.total_seconds() / 3600))
