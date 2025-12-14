@@ -94,7 +94,7 @@ def main():
     frames = []
     for loc in CFG.TARGET_LOCATIONS:
         frames.append(fetch_weather_gov(loc["lat"], loc["lon"], CFG.VARIABLES))
-    df = pd.concat(frames, ignore_index=True) if frames else pd.Data    df = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+    df = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
     insert_dataframe(df, "forecasts")
 
 if __name__ == "__main__":

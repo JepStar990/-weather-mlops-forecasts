@@ -1,11 +1,11 @@
 """
-Meteostat hourly observations via Point(lat, lon) for each configured location.
+Meteostat hourly observations for the nearest station to each configured location.
 Docs: https://pypi.org/project/meteostat/
 """
 
 import pandas as pd
 from datetime import datetime, timedelta, timezone
-from meteostat import Point, Hourly
+from meteostat import Point, Hourly, Stations
 
 from src.config import CFG
 from src.utils.db_utils import insert_dataframe
@@ -15,20 +15,43 @@ from src.utils.unit_utils import normalize_value
 logger = get_logger(__name__)
 
 
+def nearest_station(lat: float, lon: float):
+    """
+    Return the nearest station id & coords (if any).
+    NOTE: We do NOT call .inventory(hours=True) because that arg is not supported
+    on your installed meteostat version. We’ll rely on Hourly(Point(...)) fetch.
+    """
+    try:
+        # Fetch 1 nearest station
+        station_df = Stations().nearby(lat, lon).fetch(1)
+    except Exception as e:
+        logger.warning("Stations lookup failed near %.3f,%.3f: %s", lat, lon, e)
+        return None, None
+
+    if station_df.empty:
+        return None, None
+
+    row = station_df.iloc[0]
+    return row.get("id"), (float(row.get("latitude")), float(row.get("longitude")))
+
+
 def fetch_obs(lat: float, lon: float) -> pd.DataFrame:
     """
-    Fetch the last 7 days of hourly observations near the given lat/lon.
-    Meteostat expects naive datetimes for start/end. We'll convert to UTC after fetch.
+    Fetch the last 7 days of hourly observations (UTC) near the given lat/lon.
+    Uses meteostat's Point-based query which aggregates data from the nearest station(s).
     """
-    # Use naive datetimes (no tzinfo) as required by meteostat
-    end = datetime.utcnow().replace(minute=0, second=0, microsecond=0)   # naive
-    start = end - timedelta(days=7)                                      # naive
+    station_id, _ = nearest_station(lat, lon)
+    if not station_id:
+        logger.warning("No station found near %.3f,%.3f", lat, lon)
+        return pd.DataFrame()
 
+    end = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
+    start = end - timedelta(days=7)
+
+    # Point-based hourly fetch; meteostat will select appropriate station/time series
     p = Point(lat, lon)
-
     try:
-        # Do NOT pass timezone="UTC" here; meteostat will return times (naive/with tz)
-        df = Hourly(p, start, end).fetch()
+        df = Hourly(p, start, end, timezone="UTC").fetch()
     except Exception as e:
         logger.warning("Hourly fetch failed near %.3f,%.3f: %s", lat, lon, e)
         return pd.DataFrame()
@@ -38,21 +61,14 @@ def fetch_obs(lat: float, lon: float) -> pd.DataFrame:
         return pd.DataFrame()
 
     rows = []
-    # Standardize timestamps to UTC-aware datetimes for DB consistency
-    # If the index is naive, we set tzinfo=UTC; if tz-aware, convert to UTC.
     for ts, row in df.iterrows():
-        # ts may be a pandas Timestamp; handle both naive and tz-aware
-        ts_py = ts.to_pydatetime()
-        if ts_py.tzinfo is None:
-            obs_time = ts_py.replace(tzinfo=timezone.utc)
-        else:
-            obs_time = ts_py.astimezone(timezone.utc)
+        obs_time = ts.to_pydatetime().replace(tzinfo=timezone.utc)
 
-        # Temperature (°C) → temp_2m
+        # Temperature
         if "temp_2m" in CFG.VARIABLES and "temp" in row and pd.notna(row["temp"]):
             v, u = normalize_value("temp_2m", float(row["temp"]), "C")
             rows.append({
-                "station_id": None,  # unknown/nearest selected by Meteostat Point
+                "station_id": station_id,
                 "lat": lat, "lon": lon,
                 "variable": "temp_2m",
                 "obs_time": obs_time,
@@ -60,11 +76,11 @@ def fetch_obs(lat: float, lon: float) -> pd.DataFrame:
                 "source": "meteostat",
             })
 
-        # Wind speed (typically km/h from Meteostat) → wind_speed_10m (normalized to m/s)
+        # Wind speed (meteostat hourly often provides 'wspd' in km/h)
         if "wind_speed_10m" in CFG.VARIABLES and "wspd" in row and pd.notna(row["wspd"]):
             v, u = normalize_value("wind_speed_10m", float(row["wspd"]), "km/h")
             rows.append({
-                "station_id": None,
+                "station_id": station_id,
                 "lat": lat, "lon": lon,
                 "variable": "wind_speed_10m",
                 "obs_time": obs_time,
@@ -72,11 +88,11 @@ def fetch_obs(lat: float, lon: float) -> pd.DataFrame:
                 "source": "meteostat",
             })
 
-        # Precipitation (mm) → precipitation
+        # Precipitation (mm)
         if "precipitation" in CFG.VARIABLES and "prcp" in row and pd.notna(row["prcp"]):
             v, u = normalize_value("precipitation", float(row["prcp"] or 0.0), "mm")
             rows.append({
-                "station_id": None,
+                "station_id": station_id,
                 "lat": lat, "lon": lon,
                 "variable": "precipitation",
                 "obs_time": obs_time,

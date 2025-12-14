@@ -4,6 +4,7 @@ ____pycache__/
 .venv/
 .env
 .env.local
+.bak
 
 # Data/cache
 .cache/

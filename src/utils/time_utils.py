@@ -9,7 +9,7 @@ def to_utc(dt) -> datetime:
     """Coerce dt (str|datetime) to timezone-aware UTC datetime."""
     if isinstance(dt, str):
         dt = parser.isoparse(dt)
-    if dt.t    if dt.tzinfo is None:
+    if dt.tzinfo is None:
         return dt.replace(tzinfo=timezone.utc)
     return dt.astimezone(timezone.utc)
 

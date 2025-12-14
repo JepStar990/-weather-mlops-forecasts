@@ -33,13 +33,31 @@ def train_one(variable: str, horizon: int):
         logger.warning("No data for %s H+%d", variable, horizon)
         return None
     # features
-    vendor_cols = [c for c in Xy.columns if c in ("open_meteo","met_no","openweather","visual_crossing","weather_gov")]
+    vendor_cols = [c for c in ("open_meteo","met_no","openweather","visual_crossing","weather_gov") if c in Xy.columns]
     lag_cols = [c for c in Xy.columns if c.startswith("obs_lag_")]
     feat = vendor_cols + lag_cols + ["hour","dow"]
-    Xy = Xy.dropna(subset=feat + ["y"])
-    if Xy.empty:
-        logger.warning("After dropna, no rows for %s H+%d", variable, horizon)
+
+    # Keep rows that have a target and at least ONE vendor signal
+    Xy = Xy[Xy["y"].notna()]
+    if not vendor_cols:
+        logger.warning("No vendor columns present for %s H+%d", variable, horizon)
         return None
+    Xy = Xy.dropna(subset=vendor_cols, how="all")  # require >=1 vendor column non-null
+    if Xy.empty:
+        logger.warning("After vendor filter, no rows for %s H+%d", variable, horizon)
+        return None
+
+    # Fill lag features (if missing) with median; rebuild hour/dow if missing
+    for c in lag_cols:
+        if c in Xy.columns:
+            Xy[c] = Xy[c].fillna(Xy[c].median())
+
+    if "hour" not in Xy.columns or Xy["hour"].isna().any():
+        Xy["hour"] = pd.to_datetime(Xy["valid_time"]).dt.hour
+    if "dow" not in Xy.columns or Xy["dow"].isna().any():
+        Xy["dow"] = pd.to_datetime(Xy["valid_time"]).dt.dayofweek
+
+    # Now build folds
     folds = weekly_folds(Xy)
     if not folds:
         logger.warning("No folds for %s H+%d", variable, horizon)
@@ -71,7 +89,7 @@ def train_one(variable: str, horizon: int):
         logger.info("Trained %s H+%d: RMSE=%.3f MAE=%.3f (run_id=%s)", variable, horizon, rmse, mae, run_id)
         return {"variable": variable, "horizon": horizon, "rmse": rmse, "mae": mae, "run_id": run_id, "features": feat}
 
-defdef main():
+def main():
     results = []
     for var in CFG.VARIABLES:
         for h in CFG.HORIZONS_HOURS:

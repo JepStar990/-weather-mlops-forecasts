@@ -42,7 +42,7 @@ def fetch_met_no(lat: float, lon: float, variables: list[str]) -> pd.DataFrame:
                 "source": "met_no",
                 "lat": lat, "lon": lon,
                 "variable": var, "issue_time": issue, "valid_time": vt,
-                "horizon_hours": horizon                "horizon_hours": horizon_hours(issue, vt), "value": v, "unit": u
+                "horizon_hours": horizon_hours(issue, vt), "value": v, "unit": u
             })
     return pd.DataFrame(rows)
 

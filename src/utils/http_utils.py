@@ -35,21 +35,36 @@ def get_json(url: str, params: Optional[dict] = None, headers: Optional[dict] = 
                 pass
 
     # backoff loop
+    # Exponential backoff (1.5^attempt seconds)
     backoff = 1.5
     for attempt in range(6):
         try:
-            r = requests.get(url, params=params, headers=headers, timeout=timeout)
-            if r.status_code == 429 or 500 <= r.status_code < 600:
-                raise requests.HTTPError(f"HTTP {r.status_code}: {r.text[:200]}")
-            r.raise_for_status()
-            data = r.json()
+            resp = requests.get(url, params=params, headers=headers, timeout=timeout)
+            # Retry on 429 or 5xx
+            if resp.status_code == 429 or 500 <= resp.status_code < 600:
+                raise requests.HTTPError(f"HTTP {resp.status_code}: {resp.text[:200]}")
+            resp.raise_for_status()
+            data = resp.json()
+
+            # Write to cache (best-effort)
             try:
                 with open(path, "w", encoding="utf-8") as f:
                     json.dump(data, f)
             except Exception:
                 pass
+
             return data
+
         except Exception as e:
             sleep = backoff ** attempt
-            logger.warning("GET %s failed (attempt %d): %s; sleeping %.            logger.warning("GET %s failed (attempt %d): %s; sleeping %.1fs", url, attempt + 1, e, sleep)
+            logger.warning(
+                "GET %s failed (attempt %d): %s; sleeping %.1fs",
+                url,
+                attempt + 1,
+                str(e),
+                sleep,
+            )
             time.sleep(sleep)
+
+    # If we reach here, all retries failed
+    raise RuntimeError(f"Failed GET {url} after retries")

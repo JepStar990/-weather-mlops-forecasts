@@ -44,7 +44,7 @@ def fetch_openweather(lat: float, lon: float, variables: list[str]) -> pd.DataFr
             rows.append({
                 "source": "openweather",
                 "lat": lat, "lon": lon, "variable": var,
-                "issue_time": issue                "issue_time": issue, "valid_time": vt,
+                "issue_time": issue, "valid_time": vt,
                 "horizon_hours": horizon_hours(issue, vt),
                 "value": v, "unit": u,
             })
