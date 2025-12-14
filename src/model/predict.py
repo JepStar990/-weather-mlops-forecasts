@@ -5,6 +5,7 @@ For simplicity, use the latest run as champion fallback.
 import os
 import mlflow
 import pandas as pd
+from sqlalchemy import text
 from datetime import datetime, timezone
 from src.config import CFG
 from src.model.features import build_features
@@ -15,11 +16,15 @@ logger = get_logger(__name__)
 
 def get_champion_run():
     with db_conn() as conn:
-        row = conn.execute("SELECT mlflow_run_id FROM models WHERE is_champion=TRUE ORDER BY id DESC LIMIT 1").fetchone()
-        if row:
+        row = conn.execute(
+            text("SELECT mlflow_run_id FROM models WHERE is_champion=TRUE ORDER BY id DESC LIMIT 1")
+        ).fetchone()
+        if row and row[0]:
             return row[0]
-        # fallback to latest
-        row = conn.execute("SELECT mlflow_run_id FROM models ORDER BY id DESC LIMIT 1").fetchone()
+
+        row = conn.execute(
+            text("SELECT mlflow_run_id FROM models ORDER BY id DESC LIMIT 1")
+        ).fetchone()
         return row[0] if row else None
 
 def mlflow_setup():
@@ -59,3 +64,4 @@ def main():
     insert_dataframe(df, "forecasts")
 
 if __name__ == "__main__":
+    main()
