@@ -75,39 +75,31 @@ def build_features(variable: str, horizon: int) -> pd.DataFrame:
     cal = calendar_features(X[["valid_time"]].drop_duplicates()).rename(columns={"valid_time":"valid_time"})
     X = X.merge(cal, on="valid_time", how="left")
     
-    # attach target from observations (aligned to valid_time)
+    # attach target from observations with ±1h tolerance using merge_asof (memory‑safe)
     ysql = """
-    SELECT lat, lon, obs_time as valid_time, value as y
+    SELECT lat, lon, obs_time AS obs_time, value AS y
     FROM observations
     WHERE variable = :variable
     """
     ydf = fetch_df(ysql, {"variable": variable})
-
     if ydf.empty:
         return pd.DataFrame()
 
-    # Create a copy of X with valid_time +/- 1h to catch slight misalignments
-    X0 = X.copy()
-    Xm1 = X.copy(); Xm1["valid_time"] = Xm1["valid_time"] - pd.to_timedelta(1, unit="h")
-    Xp1 = X.copy(); Xp1["valid_time"] = Xp1["valid_time"] + pd.to_timedelta(1, unit="h")
+    # ensure proper dtypes & sorting for merge_asof
+    X = X.sort_values(["lat", "lon", "valid_time"]).copy()
+    X["valid_time"] = pd.to_datetime(X["valid_time"])
 
-    def join_y(Xcand: pd.DataFrame) -> pd.DataFrame:
-        return Xcand.merge(
-            ydf.rename(columns={"obs_time": "valid_time"}),
-            on=["lat", "lon", "valid_time"],
-            how="left",
-         )
+    ydf = ydf.sort_values(["lat", "lon", "obs_time"]).copy()
+    ydf["obs_time"] = pd.to_datetime(ydf["obs_time"])
+    ydf = ydf.rename(columns={"obs_time": "valid_time"})
 
-    Xy = join_y(X0)
-    # fill missing y from the +/-1h candidates
-    Xy_m1 = join_y(Xm1).rename(columns={"y": "y_m1"})
-    Xy_p1 = join_y(Xp1).rename(columns={"y": "y_p1"})
-
-    Xy = Xy.merge(Xy_m1[["lat", "lon", "valid_time", "y_m1"]], on=["lat", "lon", "valid_time"], how="left")
-    Xy = Xy.merge(Xy_p1[["lat", "lon", "valid_time", "y_p1"]], on=["lat", "lon", "valid_time"], how="left")
-
-    # Prefer exact match; fallback to -1h, then +1h
-    Xy["y"] = Xy["y"].fillna(Xy["y_m1"]).fillna(Xy["y_p1"])
+    Xy = pd.merge_asof(
+        X, ydf,
+        on="valid_time",
+        by=["lat", "lon"],
+        direction="nearest",
+        tolerance=pd.Timedelta(hours=1)
+    )
     return Xy
 
     # # attach target from observations (aligned to valid_time)
