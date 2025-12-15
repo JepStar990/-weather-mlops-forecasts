@@ -104,6 +104,13 @@ def build_features(variable: str, horizon: int) -> pd.DataFrame:
     ydf = ydf.rename(columns={"obs_time": "valid_time"})
     ydf = ydf.sort_values(["lat", "lon", "valid_time"], kind="mergesort")
 
+    # Ensure proper sorting for merge_asof
+    X["valid_time"] = pd.to_datetime(X["valid_time"], utc=True)
+    ydf["valid_time"] = pd.to_datetime(ydf["valid_time"], utc=True)
+
+    X = X.sort_values(["valid_time", "lat", "lon"], kind="mergesort")
+    ydf = ydf.sort_values(["valid_time", "lat", "lon"], kind="mergesort")
+
     Xy = pd.merge_asof(
         X, ydf,
         on="valid_time",
