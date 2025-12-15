@@ -36,7 +36,7 @@ def train_one(variable: str, horizon: int):
     # --- feature column selection ---
     vendor_cols = [c for c in ("open_meteo","met_no","openweather","visual_crossing","weather_gov") if c in Xy.columns]
     lag_cols = [c for c in Xy.columns if c.startswith("obs_lag_")]
-     feat = vendor_cols + lag_cols + ["hour","dow"]
+    feat = vendor_cols + lag_cols + ["hour","dow"]
 
     # --- keep rows: must have target and at least ONE vendor signal ---
     Xy = Xy[Xy["y"].notna()]
