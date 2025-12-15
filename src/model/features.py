@@ -17,7 +17,7 @@ def get_vendor_matrix(variable: str, horizon: int) -> pd.DataFrame:
     WHERE variable = :variable
       AND source IN ('open_meteo','met_no','openweather','visual_crossing','weather_gov')
     """
-       df = fetch_df(sql, {"variable": variable})
+    df = fetch_df(sql, {"variable": variable})
     if df.empty:
         return df
     return df.pivot_table(
