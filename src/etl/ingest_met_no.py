@@ -17,7 +17,11 @@ def fetch_met_no(lat: float, lon: float, variables: list[str]) -> pd.DataFrame:
         "User-Agent": CFG.MET_NO_USER_AGENT,
         "Accept": "application/json",
     }
-    data = get_json(MET_NO_URL, params={"lat": lat, "lon": lon}, headers=headers)
+    try:
+        data = get_json(MET_NO_URL, params={"lat": lat, "lon": lon}, headers=headers)
+    except Exception as e:
+        logger.warning("MET Norway fetch failed at %.3f,%.3f: %s; skipping", lat, lon, e)
+        return pd.DataFrame()
     issue = now_utc()
     timeseries = data.get("properties", {}).get("timeseries", [])
     rows = []
