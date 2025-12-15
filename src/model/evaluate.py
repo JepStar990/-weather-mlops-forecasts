@@ -30,7 +30,7 @@ def evaluate_model(model, folds, features, target="y"):
         yv = va[target]
         pred = model.predict(Xv)
         mae = mean_absolute_error(yv, pred)
-        rmse = mean_squared_error(yv, pred, squared=False)
+        rmse = mean_squared_error(yv, pred) ** 0.5
         metrics.append({"fold": i, "mae": mae, "rmse": rmse, "n": len(va)})
     dfm = pd.DataFrame(metrics)
     return dfm, df
