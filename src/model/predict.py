@@ -36,7 +36,7 @@ def mlflow_setup():
         mlflow.set_tracking_uri(tracking_uri)
 
 def main():
-    run_id = get_champion_run()
+    run_id = get_champion_model_name()
     if not run_id:
         logger.warning("No champion found; skipping prediction")
         return
