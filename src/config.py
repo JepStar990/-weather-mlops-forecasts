@@ -1,9 +1,22 @@
 import json
 import os
+import logging
 from dataclasses import dataclass, field
 from dotenv import load_dotenv
 
 load_dotenv()
+loggerlogger = logging.getLogger(__name__)
+
+def _json_env(name: str, default):
+    """Parse JSON from env; return default if missing or invalid."""
+    raw = os.getenv(name)
+    if raw is None or raw.strip() == "":
+        return default
+    try:
+        return json.loads(raw)
+    except Exception as e:
+        logger.warning("Invalid JSON in %s (%r): %s; using default", name, (raw[:80] if raw else raw), e)
+        return default
 
 @dataclass(frozen=True)
 class Config:
@@ -17,9 +30,9 @@ class Config:
     DAGSHUB_TOKEN: str = os.getenv("DAGSHUB_TOKEN", "")
     PUBLIC_REPO_NAME: str = os.getenv("PUBLIC_REPO_NAME", "weather-mlops-forecasts")
 
-    TARGET_LOCATIONS: list[dict] = field(default_factory=lambda: json.loads(os.getenv("TARGET_LOCATIONS", "[]")))
-    VARIABLES: list[str] = field(default_factory=lambda: json.loads(os.getenv("VARIABLES", '["temp_2m","wind_speed_10m","precipitation"]')))
-    HORIZONS_HOURS: list[int] = field(default_factory=lambda: json.loads(os.getenv("HORIZONS_HOURS", "[1,3,6,12,24,48,72]")))
+    TARGET_LOCATIONS: list[dict] = field(default_factory=lambda: _json_env("TARGET_LOCATIONS", []))
+    VARIABLES: list[str] = field(default_factory=lambda: _json_env("VARIABLES", ["temp_2m","wind_speed_10m","precipitation"]))
+    HORIZONS_HOURS: list[int] = field(default_factory=lambda: _json_env("HORIZONS_HOURS", [1,3,6,12,24,48,72]))
 
     LOCAL_TIMEZONE: str = os.getenv("LOCAL_TIMEZONE", "Africa/Johannesburg")
 
