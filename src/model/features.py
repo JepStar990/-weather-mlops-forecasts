@@ -74,6 +74,7 @@ def build_features(variable: str, horizon: int) -> pd.DataFrame:
     X = vend.merge(lags, on=["lat","lon","valid_time"], how="left")
     cal = calendar_features(X[["valid_time"]].drop_duplicates()).rename(columns={"valid_time":"valid_time"})
     X = X.merge(cal, on="valid_time", how="left")
+    
     # attach target from observations (aligned to valid_time)
     ysql = """
     SELECT lat, lon, obs_time as valid_time, value as y
@@ -95,7 +96,7 @@ def build_features(variable: str, horizon: int) -> pd.DataFrame:
             ydf.rename(columns={"obs_time": "valid_time"}),
             on=["lat", "lon", "valid_time"],
             how="left",
-        )
+         )
 
     Xy = join_y(X0)
     # fill missing y from the +/-1h candidates
@@ -104,8 +105,42 @@ def build_features(variable: str, horizon: int) -> pd.DataFrame:
 
     Xy = Xy.merge(Xy_m1[["lat", "lon", "valid_time", "y_m1"]], on=["lat", "lon", "valid_time"], how="left")
     Xy = Xy.merge(Xy_p1[["lat", "lon", "valid_time", "y_p1"]], on=["lat", "lon", "valid_time"], how="left")
-
-    # Prefer exact match; fallback to -1h, then +1h
-    Xy["y"] = Xy["y"].fillna(Xy["y_m1"]).fillna(Xy["y_p1"])
-    Xy = Xy.drop(columns=["y_m1", "y_p1"])
     return Xy
+# Prefer exact match; fallback to -1h, then +1h
+Xy["y"] = Xy["y"].fillna(Xy["y_m1"]).fillna(Xy["y_p1"])
+
+    # # attach target from observations (aligned to valid_time)
+    # ysql = """
+    # SELECT lat, lon, obs_time as valid_time, value as y
+    # FROM observations
+    # WHERE variable = :variable
+    # """
+    # ydf = fetch_df(ysql, {"variable": variable})
+
+    # if ydf.empty:
+    #     return pd.DataFrame()
+
+    # # Create a copy of X with valid_time +/- 1h to catch slight misalignments
+    # X0 = X.copy()
+    # Xm1 = X.copy(); Xm1["valid_time"] = Xm1["valid_time"] - pd.to_timedelta(1, unit="h")
+    # Xp1 = X.copy(); Xp1["valid_time"] = Xp1["valid_time"] + pd.to_timedelta(1, unit="h")
+
+    # def join_y(Xcand: pd.DataFrame) -> pd.DataFrame:
+    #     return Xcand.merge(
+    #         ydf.rename(columns={"obs_time": "valid_time"}),
+    #         on=["lat", "lon", "valid_time"],
+    #         how="left",
+    #     )
+
+    # Xy = join_y(X0)
+    # # fill missing y from the +/-1h candidates
+    # Xy_m1 = join_y(Xm1).rename(columns={"y": "y_m1"})
+    # Xy_p1 = join_y(Xp1).rename(columns={"y": "y_p1"})
+
+    # Xy = Xy.merge(Xy_m1[["lat", "lon", "valid_time", "y_m1"]], on=["lat", "lon", "valid_time"], how="left")
+    # Xy = Xy.merge(Xy_p1[["lat", "lon", "valid_time", "y_p1"]], on=["lat", "lon", "valid_time"], how="left")
+
+    # # Prefer exact match; fallback to -1h, then +1h
+    # Xy["y"] = Xy["y"].fillna(Xy["y_m1"]).fillna(Xy["y_p1"])
+    # Xy = Xy.drop(columns=["y_m1", "y_p1"])
+    # return Xy
