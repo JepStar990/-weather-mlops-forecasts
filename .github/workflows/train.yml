@@ -3,14 +3,20 @@ on:
   schedule:
     - cron: "17 3 * * *"   # daily 03:17 UTC
   workflow_dispatch: {}
+
 jobs:
   train:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
-        with: { python-version: "3.11" }
-      - run: pip install -r requirements.txt
+        with:
+          python-version: "3.11"
+
+      - name: Install Python deps
+        run: pip install -r requirements.txt
+
       - name: Train models & Promote
         run: |
           python -m src.jobs.job_train_daily
@@ -19,5 +25,6 @@ jobs:
           DAGSHUB_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
           DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
           PUBLIC_REPO_NAME: ${{ vars.PUBLIC_REPO_NAME }}
-          TARGET_LOCATIONS: ${{          TARGET_LOCATIONS: ${{ vars.TARGET_LOCATIONS }}
+          TARGET_LOCATIONS: ${{ vars.TARGET_LOCATIONS }}
           VARIABLES: ${{ vars.VARIABLES }}
+          HORIZONS_HOURS: ${{ vars.HORIZONS_HOURS }}
