@@ -12,16 +12,23 @@ logger = get_logger(__name__)
 
 def get_vendor_matrix(variable: str, horizon: int) -> pd.DataFrame:
     sql = """
-    SELECT lat, lon, valid_time, source, value
+    SELECT lat, lon, valid_time, source, value, horizon_hours
     FROM forecasts
     WHERE variable = :variable
-      AND source IN ('open_meteo','met_no','openweather','visual_crossing','weather_gov')
+    AND source IN ('open_meteo','met_no','openweather','visual_crossing','weather_gov')
     """
     df = fetch_df(sql, {"variable": variable})
     if df.empty:
         return df
-    return df.pivot_table(
-        index=["lat","lon","valid_time"], columns="source", values="value",).reset_index()
+# Try tolerant horizon filter first
+    dff = df[ (df["horizon_hours"] - horizon).abs() <= 1 ]
+    if dff.empty:
+        logger.warning("No vendor rows for %s H+%d within ±1h; falling back to unfiltered", variable, horizon)
+        dff = df
+
+    return dff.pivot_table(
+        index=["lat","lon","valid_time"], columns="source", values="value"
+    ).reset_index()
 
 # def get_vendor_matrix(variable: str, horizon: int) -> pd.DataFrame:
 #     sql = """
