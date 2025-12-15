@@ -13,6 +13,8 @@ from mlflow import sklearn as ml_sklearn
 from sklearn.linear_model import LinearRegression
 from lightgbm import LGBMRegressor
 import pandas as pd
+from sqlalchemy import text
+from src.utils.db_utils import db_conn
 from src.config import CFG
 from src.model.features import build_features
 from src.model.evaluate import weekly_folds, evaluate_model
@@ -134,12 +136,17 @@ def train_one(variable: str, horizon: int):
         with tempfile.NamedTemporaryFile("w", suffix=".csv", delete=False) as tmp:
             dfm.to_csv(tmp.name, index=False)
             tmp_path = tmp.name
-
         mlflow.log_artifact(tmp_path, artifact_path="fold_metrics")
         os.unlink(tmp_path)
         ml_sklearn.log_model(model, name="model")
         run_id = mlflow.active_run().info.run_id
         logger.info("Trained %s H+%d: RMSE=%.3f MAE=%.3f (run_id=%s)", variable, horizon, rmse, mae, run_id)
+        # Register the run in DB (per variable & horizon)
+        with db_conn() as conn:
+            conn.execute(text("""
+                INSERT INTO models (name, variable, horizon_hours, mlflow_run_id, is_champion)
+                VALUES (:n, :v, :h, :r, FALSE)
+            """), {"n": "ensemble", "v": variable, "h": horizon, "r": run_id})
         return {"variable": variable, "horizon": horizon, "rmse": rmse, "mae": mae, "run_id": run_id, "features": feat}
 
 def main():
