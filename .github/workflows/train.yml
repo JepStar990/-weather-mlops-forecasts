@@ -17,7 +17,7 @@ jobs:
       - name: Install Python deps
         run: pip install -r requirements.txt
 
-      - name: Train models & Promote
+      - name: Train models
         run: |
           python -m src.jobs.job_train_daily
         env:
@@ -28,3 +28,10 @@ jobs:
           TARGET_LOCATIONS: ${{ vars.TARGET_LOCATIONS }}
           VARIABLES: ${{ vars.VARIABLES }}
           HORIZONS_HOURS: ${{ vars.HORIZONS_HOURS }}
+          
+      - name: Promote champion
+        run: python -m src.jobs.job_promote_champion
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DAGSHUB_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
+          DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
