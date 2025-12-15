@@ -41,26 +41,20 @@ def main():
         return
     mlflow_setup()
     # Try common artifact names; fall back to first artifact if needed
-    candidates = ["model", "sklearn-model", "model-artifacts"]
-    loaded = None
-    for p in candidates:
-        try:
-            loaded = mlflow.pyfunc.load_model(f"runs:/{run_id}/{p}")
-            break
-        except Exception:
-            continue
-    if loaded is None:
-        from mlflow.tracking import MlflowClient
-        items = mlflow.tracking.MlflowClient().list_artifacts(run_id)
-        if not items:
-            raise RuntimeError(f"No artifacts found under run {run_id}")
+    from mlflow.tracking import MlflowClient
 
-        # Prefer 'model' folder if present
-        model_item = next((i for i in items if i.path == "model"), None)
-        if not model_item:
-            raise RuntimeError(f"No 'model' artifact found under run {run_id}")
-        loaded = mlflow.pyfunc.load_model(f"runs:/{run_id}/model")
-        
+    client = MlflowClient()
+    items = client.list_artifacts(run_id)
+    if not items:
+        raise RuntimeError(f"No artifacts found under run {run_id}")
+
+    # Pick first directory artifact dynamically
+    model_item = next((i for i in items if i.is_dir), None)
+    if not model_item:
+        raise RuntimeError(f"No model directory found under run {run_id}")
+
+    loaded = mlflow.pyfunc.load_model(f"runs:/{run_id}/{model
+    
     rows = []
     for var in CFG.VARIABLES:
         for h in CFG.HORIZONS_HOURS:
