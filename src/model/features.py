@@ -15,17 +15,30 @@ def get_vendor_matrix(variable: str, horizon: int) -> pd.DataFrame:
     SELECT lat, lon, valid_time, source, value
     FROM forecasts
     WHERE variable = :variable
-      AND ABS(horizon_hours - :h) <= 1
       AND source IN ('open_meteo','met_no','openweather','visual_crossing','weather_gov')
     """
-    df = fetch_df(sql, {"variable": variable, "h": horizon})
+       df = fetch_df(sql, {"variable": variable})
     if df.empty:
         return df
     return df.pivot_table(
-        index=["lat", "lon", "valid_time"],
-        columns="source",
-        values="value",
-    ).reset_index()
+        index=["lat","lon","valid_time"], columns="source", values="value",).reset_index()
+
+# def get_vendor_matrix(variable: str, horizon: int) -> pd.DataFrame:
+#     sql = """
+#     SELECT lat, lon, valid_time, source, value
+#     FROM forecasts
+#     WHERE variable = :variable
+#       AND ABS(horizon_hours - :h) <= 1
+#       AND source IN ('open_meteo','met_no','openweather','visual_crossing','weather_gov')
+#     """
+#     df = fetch_df(sql, {"variable": variable, "h": horizon})
+#     if df.empty:
+#         return df
+#     return df.pivot_table(
+#         index=["lat", "lon", "valid_time"],
+#         columns="source",
+#         values="value",
+#     ).reset_index()
 
 def get_obs_lags(variable: str, lags=(1,3,6)) -> pd.DataFrame:
     sql = """
