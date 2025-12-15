@@ -138,12 +138,12 @@ def train_one(variable: str, horizon: int):
             tmp_path = tmp.name
         mlflow.log_artifact(tmp_path, artifact_path="fold_metrics")
         os.unlink(tmp_path)
+        run_id = mlflow.active_run().info.run_id
         
         from datetime import datetime
         model_name = f"model_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         ml_sklearn.log_model(model, artifact_path="model")
         mlflow.register_model(f"runs:/{run_id}/model", model_name)
-        run_id = mlflow.active_run().info.run_id
         logger.info("Trained %s H+%d: RMSE=%.3f MAE=%.3f (run_id=%s)", variable, horizon, rmse, mae, run_id)
         
         # Register the run in DB (per variable & horizon)
