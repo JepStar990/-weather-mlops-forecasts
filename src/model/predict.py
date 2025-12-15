@@ -14,16 +14,17 @@ from src.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-def get_champion_run():
+def get_champion_model_name():
     with db_conn() as conn:
         row = conn.execute(
-            text("SELECT mlflow_run_id FROM models WHERE is_champion=TRUE ORDER BY id DESC LIMIT 1")
+            text("SELECT name FROM models WHERE is_champion=TRUE ORDER BY id DESC LIMIT 1")
         ).fetchone()
         if row and row[0]:
             return row[0]
 
+        # Fallback: latest model
         row = conn.execute(
-            text("SELECT mlflow_run_id FROM models ORDER BY id DESC LIMIT 1")
+            text("SELECT name FROM models ORDER BY id DESC LIMIT 1")
         ).fetchone()
         return row[0] if row else None
 
@@ -40,20 +41,13 @@ def main():
         logger.warning("No champion found; skipping prediction")
         return
     mlflow_setup()
-    # Try common artifact names; fall back to first artifact if needed
-    from mlflow.tracking import MlflowClient
+    champion_name = get_champion_model_name()
+    if not champion_name:
+        logger.warning("No champion model found; skipping prediction")
+        return
 
-    client = MlflowClient()
-    items = client.list_artifacts(run_id)
-    if not items:
-        raise RuntimeError(f"No artifacts found under run {run_id}")
-
-    # Pick first directory artifact dynamically
-    model_item = next((i for i in items if i.is_dir), None)
-    if not model_item:
-        raise RuntimeError(f"No model directory found under run {run_id}")
-
-    loaded = mlflow.pyfunc.load_model(f"runs:/{run_id}/{model_item.path}")
+    model = mlflow.pyfunc.load_model(f"models:/{champion_name}/Production")
+    logger.info(f"Loaded champion model: {champion_name}")
     
     rows = []
     for var in CFG.VARIABLES:
