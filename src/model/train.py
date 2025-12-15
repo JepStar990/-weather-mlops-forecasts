@@ -144,9 +144,9 @@ def train_one(variable: str, horizon: int):
         # Register the run in DB (per variable & horizon)
         with db_conn() as conn:
             conn.execute(text("""
-                INSERT INTO models (name, variable, horizon_hours, mlflow_run_id, is_champion)
-                VALUES (:n, :v, :h, :r, FALSE)
-            """), {"n": "ensemble", "v": variable, "h": horizon, "r": run_id})
+                INSERT INTO models (name, mlflow_run_id, is_champion)
+                VALUES (:n, :r, FALSE)
+            """), {"n": "ensemble", "r": run_id})
         return {"variable": variable, "horizon": horizon, "rmse": rmse, "mae": mae, "run_id": run_id, "features": feat}
 
 def main():
