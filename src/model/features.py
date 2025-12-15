@@ -105,9 +105,10 @@ def build_features(variable: str, horizon: int) -> pd.DataFrame:
 
     Xy = Xy.merge(Xy_m1[["lat", "lon", "valid_time", "y_m1"]], on=["lat", "lon", "valid_time"], how="left")
     Xy = Xy.merge(Xy_p1[["lat", "lon", "valid_time", "y_p1"]], on=["lat", "lon", "valid_time"], how="left")
+
+    # Prefer exact match; fallback to -1h, then +1h
+    Xy["y"] = Xy["y"].fillna(Xy["y_m1"]).fillna(Xy["y_p1"])
     return Xy
-# Prefer exact match; fallback to -1h, then +1h
-Xy["y"] = Xy["y"].fillna(Xy["y_m1"]).fillna(Xy["y_p1"])
 
     # # attach target from observations (aligned to valid_time)
     # ysql = """
