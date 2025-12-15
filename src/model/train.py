@@ -44,10 +44,10 @@ def train_one(variable: str, horizon: int):
         logger.warning("No vendor columns present for %s H+%d", variable, horizon)
         return None
 
-     Xy = Xy.dropna(subset=vendor_cols, how="all")  # >= 1 vendor value
-     if Xy.empty:
-         logger.warning("After vendor filter, no rows for %s H+%d", variable, horizon)
-         return None
+    Xy = Xy.dropna(subset=vendor_cols, how="all")  # >= 1 vendor value
+    if Xy.empty:
+        logger.warning("After vendor filter, no rows for %s H+%d", variable, horizon)
+        return None
 
     # Fill lag features if missing; rebuild calendar features if needed
     for c in lag_cols:
