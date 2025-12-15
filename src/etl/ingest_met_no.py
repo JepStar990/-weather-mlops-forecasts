@@ -13,7 +13,10 @@ from src.utils.logging_utils import get_logger
 logger = get_logger(__name__)
 
 def fetch_met_no(lat: float, lon: float, variables: list[str]) -> pd.DataFrame:
-    headers = {"User-Agent": CFG.MET_NO_USER_AGENT}
+    headers = {
+        "User-Agent": CFG.MET_NO_USER_AGENT,
+        "Accept": "application/json",
+    }
     data = get_json(MET_NO_URL, params={"lat": lat, "lon": lon}, headers=headers)
     issue = now_utc()
     timeseries = data.get("properties", {}).get("timeseries", [])
