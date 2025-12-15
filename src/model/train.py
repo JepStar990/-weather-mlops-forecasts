@@ -6,6 +6,8 @@ Train per-variable, per-horizon models.
 """
 import os
 import mlflow
+from sklearn.pipeline import Pipeline
+from sklearn.impute import SimpleImputer
 from mlflow import sklearn as ml_sklearn
 from sklearn.linear_model import LinearRegression
 from lightgbm import LGBMRegressor
@@ -106,12 +108,17 @@ def train_one(variable: str, horizon: int):
     _setup_mlflow()
     with mlflow.start_run(run_name=f"{variable}_H{horizon}"):
         # Baseline
-        base = LinearRegression()
         tr = pd.concat([f[0] for f in folds], ignore_index=True)
-        base.fit(tr[feat], tr["y"])
+        base = Pipeline([
+            ("imp", SimpleImputer(strategy="median")),
+            ("lr", LinearRegression())
+        ]).fit(tr[feat], tr["y"])
 
         try:
-            ens = LGBMRegressor(n_estimators=300, learning_rate=0.05, max_depth=-1, subsample=0.8)
+            ens = Pipeline([
+            ("imp", SimpleImputer(strategy="median")),
+            ("lgbm", LGBMRegressor(n_estimators=300, learning_rate=0.05, max_depth=-1, subsample=0.8)),
+        ])
             ens.fit(tr[feat], tr["y"])
             model = ens
             algo = "lightgbm"
