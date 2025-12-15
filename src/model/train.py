@@ -154,7 +154,7 @@ def train_one(variable: str, horizon: int):
             conn.execute(text("""
                 INSERT INTO models (name, mlflow_run_id, is_champion)
                 VALUES (:n, :r, FALSE)
-            """), {"n": "ensemble", "r": run_id})
+            """), {"n": model_name, "r": run_id})
         return {"variable": variable, "horizon": horizon, "rmse": rmse, "mae": mae, "run_id": run_id, "features": feat}
 
 def main():
