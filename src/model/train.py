@@ -44,6 +44,17 @@ def train_one(variable: str, horizon: int):
     lag_cols = [c for c in Xy.columns if c.startswith("obs_lag_")]
     feat = vendor_cols + lag_cols + ["hour","dow"]
 
+    import re
+
+    def _sort_lag_cols(cols):
+        def lag_key(c):
+            m = re.search(r"obs_lag_(\d+)", c)
+            return int(m.group(1)) if m else 10**9
+        return sorted(cols, key=lag_key)
+
+    lag_cols = _sort_lag_cols([c for c in Xy.columns if c.startswith("obs_lag_")])
+    feat = vendor_cols + lag_cols + ["hour", "dow"]
+
     # --- keep rows: must have target and at least ONE vendor signal ---
     Xy = Xy[Xy["y"].notna()]
     if not vendor_cols:
@@ -140,6 +151,14 @@ def train_one(variable: str, horizon: int):
         mlflow.log_artifact(tmp_path, artifact_path="fold_metrics")
         os.unlink(tmp_path)
         run_id = mlflow.active_run().info.run_id
+
+        from mlflow.models import infer_signature
+        tr = pd.concat([f[0] for f in folds], ignore_index=True)
+
+        signature = infer_signature(tr[feat], tr["y"])
+        input_example = tr[feat].head(5)
+
+        mlflow.log_params({"features": ",".join(feat)})  # optional for traceability
         
         from datetime import datetime
         #model_name = f"model_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
@@ -148,6 +167,8 @@ def train_one(variable: str, horizon: int):
             sk_model=model,
             artifact_path="model",  # for correct artifact folder
             registered_model_name=model_name
+            signature=signature,
+            input_example=input_example,
         )
         logger.info("Trained %s H+%d: RMSE=%.3f MAE=%.3f (run_id=%s)", variable, horizon, rmse, mae, run_id)
 
