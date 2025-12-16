@@ -149,6 +149,21 @@ def train_one(variable: str, horizon: int):
             registered_model_name=model_name
         )
         logger.info("Trained %s H+%d: RMSE=%.3f MAE=%.3f (run_id=%s)", variable, horizon, rmse, mae, run_id)
+
+        # Promote to Production (archive previous)
+        client = MlflowClient()
+        latest_none = client.get_latest_versions(model_name, stages=["None"])
+        if latest_none:
+            mv = latest_none[0]
+            client.transition_model_version_stage(
+            name=model_name,
+            version=mv.version,
+            stage="Production",
+            archive_existing_versions=True,
+            )
+            logger.info("Promoted %s version %s to Production", model_name, mv.version)
+        else:
+            logger.warning("No latest 'None' version found to promote for %s", model_name)
         
         # Register the run in DB (per variable & horizon)
         with db_conn() as conn:
