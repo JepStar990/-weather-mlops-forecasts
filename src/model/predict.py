@@ -35,11 +35,19 @@ def mlflow_setup():
         tracking_uri = f"https://dagshub.com/{CFG.DAGSHUB_USERNAME}/{CFG.PUBLIC_REPO_NAME}.mlflow"
         mlflow.set_tracking_uri(tracking_uri)
 
+import re
+def _sort_lag_cols(cols):
+    def lag_key(c):
+        m = re.search(r"obs_lag_(\d+)", c)
+        return int(m.group(1)) if m else 10**9
+    return sorted(cols, key=lag_key)
+
 def main():
     run_id = get_champion_model_name()
     if not run_id:
         logger.warning("No champion found; skipping prediction")
         return
+        
     mlflow_setup()
     champion_name = get_champion_model_name()
     if not champion_name:
@@ -55,9 +63,25 @@ def main():
             Xy = build_features(var, h)
             if Xy is None or Xy.empty:
                 continue
-            feat_cols = [c for c in Xy.columns if c in ("open_meteo","met_no","openweather","visual_crossing","weather_gov") or c.startswith("obs_lag_") or c in ("hour","dow")]
-            X = Xy[["lat","lon","valid_time"] + feat_cols].dropna()
-            if X.empty: continue
+
+            vendor_cols = [c for c in ("open_meteo","met_no","openweather","visual_crossing","weather_gov") if c in Xy.columns]
+            lag_cols = _sort_lag_cols([c for c in Xy.columns if c.startswith("obs_lag_")])
+            feat_cols = vendor_cols + lag_cols + ["hour", "dow"]
+
+            # Rebuild calendar features if missing
+            if "hour" not in Xy.columns or Xy["hour"].isna().any():
+                Xy["hour"] = pd.to_datetime(Xy["valid_time"]).dt.hour
+            if "dow" not in Xy.columns or Xy["dow"].isna().any():
+                Xy["dow"] = pd.to_datetime(Xy["valid_time"]).dt.dayofweek
+
+            # Keep rows that have at least one vendor signal (imputer will handle lag NaNs)
+            if not vendor_cols:
+                continue
+            mask_has_vendor = pd.notna(Xy[vendor_cols]).any(axis=1)
+            X = Xy.loc[mask_has_vendor, ["lat","lon","valid_time"] + feat_cols]
+            if X.empty: 
+                continue
+            
             yhat = model.predict(X[feat_cols])
             for (lat, lon, vt), v in zip(X[["lat","lon","valid_time"]].itertuples(index=False, name=None), yhat):
                 rows.append({
