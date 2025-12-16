@@ -11,6 +11,8 @@ from src.config import CFG
 from src.model.features import build_features
 from src.utils.db_utils import db_conn, insert_dataframe
 from src.utils.logging_utils import get_logger
+from sklearn import set_config
+set_config(transform_output="pandas")
 
 logger = get_logger(__name__)
 
