@@ -20,6 +20,8 @@ from src.model.features import build_features
 from src.model.evaluate import weekly_folds, evaluate_model
 from src.utils.logging_utils import get_logger
 from mlflow.tracking import MlflowClient
+from sklearn import set_config
+set_config(transform_output="pandas")
 
 logger = get_logger(__name__)
 
